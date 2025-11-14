@@ -41,7 +41,7 @@ export default function StudioLayout({ children }: StudioLayoutProps) {
             {/* 左侧边栏 */}
             <aside className="studio-sidebar">
                 <div className="sidebar-header">
-                    <h2 className="sidebar-title">Univer Studio</h2>
+                    <h2 className="sidebar-title">onlyoffice Studio</h2>
                 </div>
                 
                 <nav className="sidebar-nav">
