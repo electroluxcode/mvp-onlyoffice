@@ -6,7 +6,7 @@ interface DocEditor {
   }) => void;
   destroyEditor: () => void;
 }
-import { ONLYOFFICE_ID } from './const';
+import { ONLUOFFICE_RESOURCE, ONLYOFFICE_ID } from './const';
 // DocsAPI 类型定义
 declare global {
   interface Window {
@@ -140,7 +140,7 @@ class EditorManager {
 
     this.apiLoadingPromise = new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = '/web-apps/apps/api/documents/api.js';
+      script.src = ONLUOFFICE_RESOURCE.DOCUMENTS;
       script.onload = () => {
         this.apiLoaded = true;
         this.apiLoadingPromise = null;
@@ -157,10 +157,6 @@ class EditorManager {
     return this.apiLoadingPromise;
   }
 
-  // 检查 API 是否已加载
-  isAPILoaded(): boolean {
-    return this.apiLoaded && !!window.DocsAPI;
-  }
 
   // 切换只读/可编辑模式
   // 当从只读切换到可编辑时，重新加载编辑器实例
@@ -236,13 +232,7 @@ class EditorManager {
   print(): void {
     const editor = this.get();
     if (!editor) return;
-
     console.log('Printing document');
-    // OnlyOffice 打印命令
-    editor.sendCommand({
-      command: 'asc_print',
-      data: {},
-    });
   }
 
   // 导出文档（通过保存事件触发下载）

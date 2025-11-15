@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { loadScript, loadEditorApi, initX2T, handleDocumentOperation } from '@/onlyoffice-comp/lib/x2t';
-import { setDocmentObj, getDocmentObj } from '@/onlyoffice-comp/lib/document';
+import { handleDocumentOperation } from '@/onlyoffice-comp/lib/x2t';
+import { setDocmentObj, getDocmentObj, initializeOnlyOffice } from '@/onlyoffice-comp/lib/utils';
 import { editorManager } from '@/onlyoffice-comp/lib/editor-manager';
 import { ONLYOFFICE_ID } from '@/onlyoffice-comp/lib/const';
 import Loading from '@/components/Loading';
@@ -14,14 +14,14 @@ export default function PptPage() {
   const [readOnly, setReadOnly] = useState(false);
   const initializedRef = useRef(false);
 
+  const [_, forceUpdate] = useState(0);
   const handleOperation = async (fileName: string, file?: File) => {
     setLoading(true);
     setError(null);
     try {
       setDocmentObj({ fileName, file });
-      await loadScript();
-      await loadEditorApi();
-      await initX2T();
+      // 确保环境已初始化（如果已初始化会立即返回）
+      await initializeOnlyOffice();
       const { fileName: currentFileName, file: currentFile } = getDocmentObj();
       await handleDocumentOperation({
         file: currentFile,
@@ -39,15 +39,19 @@ export default function PptPage() {
 
   useEffect(() => {
     const init = async () => {
+      
+      forceUpdate((prev) => prev + 1);
       try {
-        await loadEditorApi();
+        // 统一初始化所有资源
+        await initializeOnlyOffice();
         // 默认加载空 PowerPoint 文档
         if (!initializedRef.current && !editorManager.exists()) {
           initializedRef.current = true;
-          await handleOperation('New_Document.pptx');
+          // await handleOperation('New_Document.pptx');
         }
+        await handleOperation('New_Document.pptx');
       } catch (err) {
-        console.error('Failed to load editor API:', err);
+        console.error('Failed to initialize OnlyOffice:', err);
         setError('无法加载编辑器组件');
       }
     };

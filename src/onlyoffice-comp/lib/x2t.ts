@@ -2,7 +2,7 @@ import { getExtensions, loadEditorApi } from './utils';
 import { g_sEmpty_bin } from './empty_bin';
 import { getDocmentObj } from './utils';
 import { editorManager } from './editor-manager';
-import { ONLYOFFICE_ID } from './const';
+import { ONLUOFFICE_RESOURCE, ONLYOFFICE_ID } from './const';
 
 declare global {
   interface Window {
@@ -64,7 +64,7 @@ class X2TConverter {
   };
 
   private readonly WORKING_DIRS = ['/working', '/working/media', '/working/fonts', '/working/themes'];
-  private readonly SCRIPT_PATH = '/wasm/x2t/x2t.js';
+  private readonly SCRIPT_PATH = ONLUOFFICE_RESOURCE.X2T;
   private readonly INIT_TIMEOUT = 300000;
 
   /**
@@ -505,6 +505,7 @@ export const convertBinToDocumentAndDownload = (
 
 // 重新导出 loadEditorApi
 export { loadEditorApi };
+
 
 // 文件类型常量
 export const oAscFileType = {

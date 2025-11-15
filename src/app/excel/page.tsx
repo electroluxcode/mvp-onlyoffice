@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { loadScript, loadEditorApi, initX2T, handleDocumentOperation } from '@/onlyoffice-comp/lib/x2t';
-import { setDocmentObj, getDocmentObj } from '@/onlyoffice-comp/lib/document';
+import { handleDocumentOperation } from '@/onlyoffice-comp/lib/x2t';
+import { initializeOnlyOffice } from '@/onlyoffice-comp/lib/utils';
+import { setDocmentObj, getDocmentObj } from '@/onlyoffice-comp/lib/utils';
 import { editorManager } from '@/onlyoffice-comp/lib/editor-manager';
 import { ONLYOFFICE_ID } from '@/onlyoffice-comp/lib/const';
 import Loading from '@/components/Loading';
@@ -13,15 +14,14 @@ export default function ExcelPage() {
   const [error, setError] = useState<string | null>(null);
   const [readOnly, setReadOnly] = useState(false);
   const initializedRef = useRef(false);
-
+  const [_, forceUpdate] = useState(0);
   const handleOperation = async (fileName: string, file?: File) => {
     setLoading(true);
     setError(null);
     try {
       setDocmentObj({ fileName, file });
-      await loadScript();
-      await loadEditorApi();
-      await initX2T();
+      // 确保环境已初始化（如果已初始化会立即返回）
+      await initializeOnlyOffice();
       const { fileName: currentFileName, file: currentFile } = getDocmentObj();
       await handleDocumentOperation({
         file: currentFile,
@@ -39,15 +39,25 @@ export default function ExcelPage() {
 
   useEffect(() => {
     const init = async () => {
+      
+      forceUpdate((prev) => prev + 1);
       try {
-        await loadEditorApi();
-        // 默认加载空 Excel 文档
+        // 统一初始化所有资源
+        await initializeOnlyOffice();
+        // 默认加载 test.xlsx 文档
         if (!initializedRef.current && !editorManager.exists()) {
           initializedRef.current = true;
-          await handleOperation('New_Document.xlsx');
+          // 加载 public/test.xlsx 文件
+          const response = await fetch('/test.xlsx');
+          if (!response.ok) {
+            throw new Error('无法加载 test.xlsx 文件');
+          }
+          const blob = await response.blob();
+          const file = new File([blob], 'test.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+          await handleOperation('test.xlsx', file);
         }
       } catch (err) {
-        console.error('Failed to load editor API:', err);
+        console.error('Failed to initialize OnlyOffice:', err);
         setError('无法加载编辑器组件');
       }
     };
