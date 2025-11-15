@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { loadScript, loadEditorApi, initX2T, handleDocumentOperation } from '@/lib/x2t';
-import { setDocmentObj, getDocmentObj } from '@/store/document';
-import { editorManager } from '@/lib/editor-manager';
+import { loadScript, loadEditorApi, initX2T, handleDocumentOperation } from '@/onlyoffice-comp/lib/x2t';
+import { setDocmentObj, getDocmentObj } from '@/onlyoffice-comp/lib/document';
+import { editorManager } from '@/onlyoffice-comp/lib/editor-manager';
+import { ONLYOFFICE_ID } from '@/onlyoffice-comp/lib/const';
 import Loading from '@/components/Loading';
 
 export default function DocsPage() {
@@ -137,7 +138,7 @@ export default function DocsPage() {
 
       {/* 编辑器容器 */}
       <div className="flex-1 relative">
-        <div id="iframe" className="absolute inset-0" />
+        <div id={ONLYOFFICE_ID} className="absolute inset-0" />
       </div>
 
       {/* 加载遮罩 */}

@@ -1,0 +1,1 @@
+export const ONLYOFFICE_ID = 'iframe2';

@@ -1,7 +1,8 @@
-import { getExtensions } from './utils';
+import { getExtensions, loadEditorApi } from './utils';
 import { g_sEmpty_bin } from './empty_bin';
-import { getDocmentObj } from '@/store/document';
+import { getDocmentObj } from './utils';
 import { editorManager } from './editor-manager';
+import { ONLYOFFICE_ID } from './const';
 
 declare global {
   interface Window {
@@ -490,10 +491,6 @@ class X2TConverter {
   }
 }
 
-// 加载编辑器 API（已移至 editorManager）
-export function loadEditorApi(): Promise<void> {
-  return editorManager.loadAPI();
-}
 
 // 单例实例
 const x2tConverter = new X2TConverter();
@@ -505,6 +502,9 @@ export const convertBinToDocumentAndDownload = (
   fileName: string,
   targetExt?: string,
 ): Promise<BinConversionResult> => x2tConverter.convertBinToDocumentAndDownload(bin, fileName, targetExt);
+
+// 重新导出 loadEditorApi
+export { loadEditorApi };
 
 // 文件类型常量
 export const oAscFileType = {
@@ -588,18 +588,79 @@ interface SaveEvent {
     };
     option: {
       outputformat: number;
-    };
+    }; 
   };
 }
 
 async function handleSaveDocument(event: SaveEvent) {
   console.log('Save document event:', event);
+  console.log('Event data structure:', JSON.stringify(event, null, 2));
+  const rawDataType = typeof (event.data?.data as any)?.data;
+  console.log('Raw data type:', rawDataType);
+  const rawDataValue = (event.data?.data as any)?.data;
+  if (typeof rawDataValue === 'string') {
+    console.log('Raw data sample (first 200 chars):', rawDataValue.substring(0, 200));
+  } else {
+    console.log('Raw data sample:', rawDataValue);
+  }
 
   if (event.data && event.data.data) {
     const { data, option } = event.data;
     const { fileName } = getDocmentObj() || {};
+    
+    // 确保 data.data 是 Uint8Array
+    let binData: Uint8Array;
+    const rawData = data.data as any;
+    
+    if (typeof rawData === 'string') {
+      // 如果是字符串，可能是 base64 编码的数据或 OnlyOffice 内部格式
+      // OnlyOffice 的 downloadAs 方法返回的数据可能是字符串格式
+      try {
+        // 首先尝试直接使用字符串作为二进制数据
+        // 将字符串转换为 Uint8Array
+        const encoder = new TextEncoder();
+        const bytes = encoder.encode(rawData);
+        binData = bytes;
+        
+        // 如果字符串看起来像 base64（以常见 base64 字符开头），尝试解码
+        if (rawData.match(/^[A-Za-z0-9+/=]+$/)) {
+          try {
+            const binaryString = atob(rawData);
+            const decodedBytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              decodedBytes[i] = binaryString.charCodeAt(i);
+            }
+            // 如果解码后的数据看起来更合理（非空且长度合理），使用解码后的数据
+            if (decodedBytes.length > 0 && decodedBytes.length < bytes.length * 2) {
+              binData = decodedBytes;
+            }
+          } catch (e) {
+            // base64 解码失败，使用原始字符串编码
+            console.log('Base64 decode failed, using raw string encoding');
+          }
+        }
+      } catch (error) {
+        console.error('Failed to process string data:', error);
+        binData = new Uint8Array(0);
+      }
+    } else if (rawData instanceof Uint8Array) {
+      binData = rawData;
+    } else if (rawData instanceof ArrayBuffer) {
+      binData = new Uint8Array(rawData);
+    } else if (rawData && typeof rawData === 'object' && 'buffer' in rawData) {
+      // 可能是 TypedArray 或其他类似结构
+      binData = new Uint8Array(rawData.buffer || rawData);
+    } else {
+      console.error('Invalid data type in save event:', typeof rawData, rawData);
+      binData = new Uint8Array(0);
+    }
+    
     // 创建下载
-    await convertBinToDocumentAndDownload(data.data, fileName, c_oAscFileType2[option.outputformat]);
+    if (binData.length > 0) {
+      await convertBinToDocumentAndDownload(binData, fileName, c_oAscFileType2[option.outputformat]);
+    } else {
+      console.error('Empty document data in save event');
+    }
   }
 
   // 告知编辑器保存完成
@@ -607,28 +668,6 @@ async function handleSaveDocument(event: SaveEvent) {
     command: 'asc_onSaveCallback',
     data: { err_code: 0 },
   });
-}
-
-/**
- * 根据文件扩展名获取 MIME 类型
- * @param extension - 文件扩展名
- * @returns string - MIME 类型
- */
-function getMimeTypeFromExtension(extension: string): string {
-  const mimeMap: Record<string, string> = {
-    png: 'image/png',
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg',
-    gif: 'image/gif',
-    bmp: 'image/bmp',
-    webp: 'image/webp',
-    svg: 'image/svg+xml',
-    ico: 'image/x-icon',
-    tiff: 'image/tiff',
-    tif: 'image/tiff',
-  };
-
-  return mimeMap[extension?.toLowerCase()] || 'image/png';
 }
 
 // 获取文档类型
@@ -643,113 +682,54 @@ export function getDocumentType(fileType: string): string | null {
   }
   return null;
 }
-// 全局 media 映射对象
-const media: Record<string, string> = {};
-/**
- * 处理文件写入请求（主要用于处理粘贴的图片）
- * @param event - OnlyOffice 编辑器的文件写入事件
- */
-function handleWriteFile(event: any) {
-  try {
-    console.log('Write file event:', event);
-
-    const { data: eventData } = event;
-    if (!eventData) {
-      console.warn('No data provided in writeFile event');
-      return;
-    }
-
-    const {
-      data: imageData, // Uint8Array 图片数据
-      file: fileName, // 文件名，如 "display8image-174799443357-0.png"
-      _target, // 目标对象，包含 frameOrigin 等信息
-    } = eventData;
-
-    // 验证数据
-    if (!imageData || !(imageData instanceof Uint8Array)) {
-      throw new Error('Invalid image data: expected Uint8Array');
-    }
-
-    if (!fileName || typeof fileName !== 'string') {
-      throw new Error('Invalid file name');
-    }
-
-    // 从文件名中提取扩展名
-    const fileExtension = fileName.split('.').pop()?.toLowerCase() || 'png';
-    const mimeType = getMimeTypeFromExtension(fileExtension);
-
-    // 创建 Blob 对象
-    const blob = new Blob([imageData as unknown as BlobPart], { type: mimeType });
-
-    // 创建对象 URL
-    const objectUrl = window.URL.createObjectURL(blob);
-    // 将图片 URL 添加到媒体映射中，使用原始文件名作为 key
-    media[`media/${fileName}`] = objectUrl;
-    editorManager.get()?.sendCommand({
-      command: 'asc_setImageUrls',
-      data: {
-        urls: media,
-      },
-    });
-
-    editorManager.get()?.sendCommand({
-      command: 'asc_writeFileCallback',
-      data: {
-        // 图片 base64
-        path: objectUrl,
-        imgName: fileName,
-      },
-    });
-    console.log(`Successfully processed image: ${fileName}, URL: ${media}`);
-  } catch (error) {
-    console.error('Error handling writeFile:', error);
-
-    // 通知编辑器文件处理失败
-    editorManager.get()?.sendCommand({
-      command: 'asc_writeFileCallback',
-      data: {
-        success: false,
-        error: error.message,
-      },
-    });
-
-    if (event.callback && typeof event.callback === 'function') {
-      event.callback({
-        success: false,
-        error: error.message,
-      });
-    }
-  }
-}
 
 // 公共编辑器创建方法
-function createEditorInstance(config: {
+export function createEditorInstance(config: {
   fileName: string;
   fileType: string;
   binData: ArrayBuffer | string;
   media?: any;
+  readOnly?: boolean; // 是否只读模式，默认为 false
 }) {
-  const { fileName, fileType, binData, media } = config;
+  const { fileName, fileType, binData, media, readOnly = false } = config;
 
   // 确保 API 已加载
   if (!window.DocsAPI) {
     throw new Error('OnlyOffice API 未加载，请先调用 loadEditorApi()');
   }
 
+  // 确保容器元素存在（OnlyOffice 的 destroyEditor 可能会删除它）
+  // 使用 editorManager 的配置来获取容器信息
+  const containerId = editorManager.getContainerId();
+  let container = document.getElementById(containerId);
+  if (!container) {
+    // 如果容器不存在，创建一个新的
+    container = document.createElement('div');
+    container.id = containerId;
+    container.className = 'absolute inset-0';
+    // 尝试找到父容器（使用 editorManager 的配置）
+    const parentSelector = editorManager.getContainerParentSelector();
+    const parent = document.querySelector(parentSelector) || document.body;
+    parent.appendChild(container);
+    console.warn('Container element was missing, created a new one');
+  }
+
   // 创建编辑器实例
-  const editor = new window.DocsAPI.DocEditor('iframe', {
+  const editor = new window.DocsAPI.DocEditor(ONLYOFFICE_ID, {
     document: {
       title: fileName,
       url: fileName, // 使用文件名作为标识
       fileType: fileType,
       permissions: {
-        edit: true,
+        // edit: !readOnly, // 根据 readOnly 参数设置编辑权限
         chat: false,
         protect: false,
+        print: false,
       },
     },
     editorConfig: {
-      lang: window.navigator.language,
+      // mode: readOnly ? 'view' : 'edit', // 根据 readOnly 参数设置模式
+      // lang: 'zh',
       customization: {
         help: false,
         about: false,
@@ -759,42 +739,70 @@ function createEditorInstance(config: {
             change: false,
           },
         },
+         // 取消远程 modal 弹窗
         anonymous: {
           request: false,
           label: 'Guest',
         },
+        layout: { 
+          header: {
+              users: false, // users list button
+              save: false, // save button
+              editMode: false, // change mode button
+              user: false // icon of current user
+          },
+      },
       },
     },
     events: {
       onAppReady: () => {
-        const editorInstance = editorManager.get();
+        // 直接使用 editor 实例，因为此时编辑器还未注册到管理器
         // 设置媒体资源
-        if (media && editorInstance) {
-          editorInstance.sendCommand({
+        if (media) {
+          editor.sendCommand({
             command: 'asc_setImageUrls',
             data: { urls: media },
           });
         }
 
         // 加载文档内容
-        if (editorInstance) {
-          editorInstance.sendCommand({
-            command: 'asc_openDocument',
-            // @ts-expect-error binData type is handled by the editor
-            data: { buf: binData },
-          });
-        }
+        editor.sendCommand({
+          command: 'asc_openDocument',
+          data: { buf: binData as any },
+        });
       },
       onDocumentReady: () => {
         console.log('文档加载完成：', fileName);
       },
+
+      // core: 下载
       onSave: handleSaveDocument,
-      writeFile: handleWriteFile,
+      onDownloadAs: (event: any) => {
+        console.log('DownloadAs event:', event);
+        // 如果提供了下载 URL，直接下载
+        if (event.data && event.data.url) {
+          const link = document.createElement('a');
+          link.href = event.data.url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      }
     },
   });
 
-  // 使用管理器注册编辑器实例
-  editorManager.create(editor);
+  // 使用管理器注册编辑器实例，保存配置以便后续切换只读模式
+  editorManager.create(editor, {
+    fileName,
+    fileType,
+    binData,
+    media,
+    readOnly,
+    events: {
+      onSave: handleSaveDocument,
+    },
+  });
 }
 
 // 合并后的文件操作方法
@@ -806,7 +814,6 @@ export async function handleDocumentOperation(options: {
   try {
     const { isNew, fileName, file } = options;
     const fileType = getExtensions(file?.type || '')[0] || fileName.split('.').pop() || '';
-    const _docType = getDocumentType(fileType);
 
     // 获取文档内容
     let documentData: {
