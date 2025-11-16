@@ -16,3 +16,6 @@ export const FILE_TYPE = {
     XLSX: 'XLSX',
     PPTX: 'PPTX',
 } as const;
+
+// 只读模式切换最小延迟时间（毫秒），防止切换过快导致界面闪烁
+export const READONLY_SWITCH_MIN_DELAY = 100;

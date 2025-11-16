@@ -6,7 +6,7 @@ interface DocEditor {
   }) => void;
   destroyEditor: () => void;
 }
-import { ONLUOFFICE_RESOURCE, ONLYOFFICE_ID, EVENT_KEYS } from './const';
+import { ONLUOFFICE_RESOURCE, ONLYOFFICE_ID, EVENT_KEYS, READONLY_SWITCH_MIN_DELAY } from './const';
 import { eventBus } from './eventbus';
 import { createEditorInstance } from './x2t';
 // DocsAPI 类型定义
@@ -163,7 +163,10 @@ class EditorManager {
   // 切换只读/可编辑模式
   // 当从只读切换到可编辑时，先导出数据，然后重新加载编辑器实例
   async setReadOnly(readOnly: boolean): Promise<void> {
-    // 如果从只读切换到可编辑，先导出数据，然后重新加载编辑器
+    
+    eventBus.emit(EVENT_KEYS.LOADING_CHANGE, { loading: true });
+    await new Promise(resolve => setTimeout(resolve, READONLY_SWITCH_MIN_DELAY));
+    // 可编辑，先导出数据，然后重新加载编辑器
     if (this.readOnly && !readOnly) {
       console.log('Switching from read-only to edit mode, exporting and reloading editor...');
       
@@ -193,7 +196,9 @@ class EditorManager {
         media: this.editorConfig?.media,
         readOnly: false, // 明确设置为可编辑模式
       });
-      
+      eventBus.on(EVENT_KEYS.DOCUMENT_READY, () => {
+        eventBus.emit(EVENT_KEYS.LOADING_CHANGE, { loading: false });
+      });
       this.readOnly = false;
       return;
     }
@@ -222,10 +227,11 @@ class EditorManager {
           message: message
         },
       });
-      
+      eventBus.emit(EVENT_KEYS.LOADING_CHANGE, { loading: false });
       this.readOnly = true;
     } catch (error) {
       console.error('Failed to set read-only mode:', error);
+      eventBus.emit(EVENT_KEYS.LOADING_CHANGE, { loading: false });
       throw error;
     }
   }
@@ -251,8 +257,6 @@ class EditorManager {
     
     // 触发保存
     try {
-      // 触发 loading 开始事件
-      eventBus.emit(EVENT_KEYS.LOADING_CHANGE, { loading: true });
       
       console.log('Trying downloadAs method');
       (editor as any).downloadAs();
@@ -261,12 +265,10 @@ class EditorManager {
       const result = await eventBus.waitFor(EVENT_KEYS.SAVE_DOCUMENT, 3000); // 3秒超时
       
       // 触发 loading 结束事件
-      eventBus.emit(EVENT_KEYS.LOADING_CHANGE, { loading: false });
       
       return result;
     } catch (error) {
       // 发生错误时也要关闭 loading
-      eventBus.emit(EVENT_KEYS.LOADING_CHANGE, { loading: false });
       console.error('Failed to send asc_save command:', error);
       throw error;
     }
@@ -275,7 +277,7 @@ class EditorManager {
 
 // 导出单例实例
 export const editorManager = new EditorManager();
-
+(window as any).editorManager = editorManager;
 // 导出类型
 export type { DocEditor };
 
