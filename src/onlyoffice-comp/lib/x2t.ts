@@ -515,7 +515,10 @@ class X2TConverter {
 
 // 单例实例
 const x2tConverter = new X2TConverter();
-window.x2tConverter = x2tConverter;
+// 只在客户端环境中设置 window.x2tConverter
+if (typeof window !== 'undefined') {
+  window.x2tConverter = x2tConverter;
+}
 export const loadScript = (): Promise<void> => x2tConverter.loadScript();
 export const initX2T = (): Promise<EmscriptenModule> => x2tConverter.initialize();
 export const convertDocument = (file: File): Promise<ConversionResult> => x2tConverter.convertDocument(file);
