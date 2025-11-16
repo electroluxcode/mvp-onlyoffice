@@ -8,6 +8,7 @@ export const ONLUOFFICE_RESOURCE = {
 export const EVENT_KEYS = {
     SAVE_DOCUMENT: 'saveDocument',
     DOCUMENT_READY: 'documentReady',
+    LOADING_CHANGE: 'loadingChange',
 } as const;
 
 export const FILE_TYPE = {

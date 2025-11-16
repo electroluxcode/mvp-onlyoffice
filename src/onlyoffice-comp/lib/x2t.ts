@@ -622,7 +622,7 @@ interface SaveEvent {
 
 
 // 保存 文档数据到本地
-async function handleSaveDocument(event: SaveEvent): Promise<any> {
+async function onSaveInEditor(event: SaveEvent): Promise<any> {
   if (event.data && event.data.data) {
     const { data, option } = event.data;
     const { fileName } = getDocmentObj() || {};
@@ -812,7 +812,7 @@ export function createEditorInstance(config: {
 
       // core: 下载
       onSave: async (event: any) => {
-        await handleSaveDocument(event);
+        await onSaveInEditor(event);
       },
     },
   });
@@ -825,7 +825,7 @@ export function createEditorInstance(config: {
     media,
     readOnly,
     events: {
-      onSave: handleSaveDocument,
+      onSave: onSaveInEditor,
     },
   });
 }

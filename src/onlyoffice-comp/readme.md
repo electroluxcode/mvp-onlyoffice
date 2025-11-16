@@ -190,6 +190,7 @@ import { EVENT_KEYS } from '@/onlyoffice-comp/lib/const';
 
 EVENT_KEYS.SAVE_DOCUMENT   // 'saveDocument' - 文档保存事件
 EVENT_KEYS.DOCUMENT_READY  // 'documentReady' - 文档准备就绪事件
+EVENT_KEYS.LOADING_CHANGE  // 'loadingChange' - Loading 状态变化事件
 ```
 
 ### 监听事件
@@ -209,6 +210,12 @@ eventBus.on(EVENT_KEYS.SAVE_DOCUMENT, (data) => {
   console.log('文档已保存:', data.fileName);
   // data: { fileName: string, fileType: string, binData: Uint8Array }
 });
+
+// 监听 Loading 状态变化事件（用于导出等操作）
+eventBus.on(EVENT_KEYS.LOADING_CHANGE, (data) => {
+  setLoading(data.loading);
+  // data: { loading: boolean }
+});
 ```
 
 ### 等待事件
@@ -222,6 +229,43 @@ const readyData = await eventBus.waitFor(EVENT_KEYS.DOCUMENT_READY, 30000);
 // 等待文档保存（3秒超时）
 const saveData = await eventBus.waitFor(EVENT_KEYS.SAVE_DOCUMENT, 3000);
 ```
+
+### Loading 状态管理
+
+`LOADING_CHANGE` 事件会在导出文档等操作时自动触发，用于显示加载状态：
+
+```typescript
+import { useEffect, useState } from 'react';
+import { eventBus } from '@/onlyoffice-comp/lib/eventbus';
+import { EVENT_KEYS } from '@/onlyoffice-comp/lib/const';
+
+function EditorPage() {
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // 监听 loading 状态变化
+    const handleLoadingChange = (data: { loading: boolean }) => {
+      setLoading(data.loading);
+    };
+    
+    eventBus.on(EVENT_KEYS.LOADING_CHANGE, handleLoadingChange);
+
+    return () => {
+      // 清理监听器
+      eventBus.off(EVENT_KEYS.LOADING_CHANGE, handleLoadingChange);
+    };
+  }, []);
+
+  return (
+    <div>
+      {loading && <Loading />}
+      {/* 编辑器内容 */}
+    </div>
+  );
+}
+```
+
+**注意：** `editorManager.export()` 方法会自动触发 `LOADING_CHANGE` 事件，无需手动管理 loading 状态。
 
 ### 取消监听
 
@@ -319,7 +363,14 @@ export default function EditorPage() {
       console.log('文档已准备就绪:', data);
     });
 
+    // 监听 loading 状态变化
+    const handleLoadingChange = (data: { loading: boolean }) => {
+      setLoading(data.loading);
+    };
+    eventBus.on(EVENT_KEYS.LOADING_CHANGE, handleLoadingChange);
+
     return () => {
+      eventBus.off(EVENT_KEYS.LOADING_CHANGE, handleLoadingChange);
       editorManager.destroy();
     };
   }, []);
@@ -408,6 +459,7 @@ export default function EditorPage() {
 事件名称常量：
 - `EVENT_KEYS.SAVE_DOCUMENT` - 文档保存事件
 - `EVENT_KEYS.DOCUMENT_READY` - 文档准备就绪事件
+- `EVENT_KEYS.LOADING_CHANGE` - Loading 状态变化事件
 
 #### `FILE_TYPE`
 文件类型常量：
@@ -431,6 +483,13 @@ type SaveDocumentData = {
   fileName: string;
   fileType: string;
   binData: Uint8Array;
+};
+```
+
+#### `LoadingChangeData`
+```typescript
+type LoadingChangeData = {
+  loading: boolean;
 };
 ```
 

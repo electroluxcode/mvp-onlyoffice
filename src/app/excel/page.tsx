@@ -18,7 +18,6 @@ export default function ExcelPage() {
   const initializedRef = useRef(false);
   const [_, forceUpdate] = useState(0);
   const handleView = async (fileName: string, file?: File) => {
-    setLoading(true);
     setError(null);
     try {
       setDocmentObj({ fileName, file });
@@ -34,8 +33,6 @@ export default function ExcelPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : '操作失败');
       console.error('Document operation failed:', err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -68,7 +65,15 @@ export default function ExcelPage() {
     eventBus.on(EVENT_KEYS.DOCUMENT_READY, (data) => {
       forceUpdate((prev) => prev + 1);
     });
+
+    // 监听 loading 状态变化
+    const handleLoadingChange = (data: { loading: boolean }) => {
+      // setLoading(data.loading);
+    };
+    eventBus.on(EVENT_KEYS.LOADING_CHANGE, handleLoadingChange);
+
     return () => {
+      eventBus.off(EVENT_KEYS.LOADING_CHANGE, handleLoadingChange);
       editorManager.destroy();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -132,14 +137,11 @@ export default function ExcelPage() {
                   onClick={async () => {
                     const newReadOnly = !readOnly;
                     setReadOnly(newReadOnly);
-                    setLoading(true);
                     try {
                       await editorManager.setReadOnly(newReadOnly);
                     } catch (err) {
                       setError('切换模式失败');
                       console.error('Failed to toggle read-only mode:', err);
-                    } finally {
-                      setLoading(false);
                     }
                   }}
                   className={`px-4 py-2 rounded-md transition-colors ${

@@ -8,6 +8,7 @@ interface DocEditor {
 }
 import { ONLUOFFICE_RESOURCE, ONLYOFFICE_ID, EVENT_KEYS } from './const';
 import { eventBus } from './eventbus';
+import { createEditorInstance } from './x2t';
 // DocsAPI 类型定义
 declare global {
   interface Window {
@@ -160,38 +161,42 @@ class EditorManager {
 
 
   // 切换只读/可编辑模式
-  // 当从只读切换到可编辑时，重新加载编辑器实例
+  // 当从只读切换到可编辑时，先导出数据，然后重新加载编辑器实例
   async setReadOnly(readOnly: boolean): Promise<void> {
-    console.log(this.editor)
-    // 如果从只读切换到可编辑，重新加载编辑器
-    // if (this.readOnly && !readOnly) {
-    //   console.log('Switching from read-only to edit mode, reloading editor...');
-    //   if (!this.editorConfig) {
-    //     throw new Error('Editor config not found, cannot reload editor');
-    //   }
+    // 如果从只读切换到可编辑，先导出数据，然后重新加载编辑器
+    if (this.readOnly && !readOnly) {
+      console.log('Switching from read-only to edit mode, exporting and reloading editor...');
       
-    //   // 销毁当前编辑器
-    //   if (this.editor) {
-    //     try {
-    //       this.editor.destroyEditor();
-    //     } catch (error) {
-    //       console.warn('Error destroying editor:', error);
-    //     }
-    //     this.editor = null;
-    //   }
+      const editor = this.get();
+      if (!editor) {
+        throw new Error('Editor not available for export');
+      }
+
+      // 先导出当前文档数据
+      let exportedData = this.editorConfig;
       
-    //   // 使用保存的配置重新创建编辑器
-    //   const { fileName, fileType, binData, media } = this.editorConfig;
-    //   createEditorInstance({
-    //     fileName,
-    //     fileType,
-    //     binData,
-    //     media,
-    //   });
+      // 销毁当前编辑器
+      if (this.editor) {
+        try {
+          this.editor.destroyEditor();
+        } catch (error) {
+          console.warn('Error destroying editor:', error);
+        }
+        this.editor = null;
+      }
       
-    //   this.readOnly = false;
-    //   return;
-    // }
+      // 使用导出的数据重新创建编辑器（可编辑模式）
+      createEditorInstance({
+        fileName: exportedData.fileName,
+        fileType: exportedData.fileType,
+        binData: exportedData.binData,
+        media: this.editorConfig?.media,
+        readOnly: false, // 明确设置为可编辑模式
+      });
+      
+      this.readOnly = false;
+      return;
+    }
     
     // 如果从可编辑切换到只读，使用命令切换
     const editor = this.get();
@@ -201,6 +206,13 @@ class EditorManager {
     }
     
     try {
+      const exportedData = await this.export();
+      this.editorConfig = {
+        ...this.editorConfig,
+        fileName: exportedData.fileName,
+        fileType: exportedData.fileType,
+        binData: exportedData.binData,
+      };
       const message = '文档已设置为只读模式';
       // rawEditor.processRightsChange(false, message);
       editor.sendCommand({
@@ -236,17 +248,25 @@ class EditorManager {
     if (!editor) {
       throw new Error('Editor not available for export');
     }
-
-    console.log('Triggering export via asc_save command');
     
     // 触发保存
     try {
+      // 触发 loading 开始事件
+      eventBus.emit(EVENT_KEYS.LOADING_CHANGE, { loading: true });
+      
       console.log('Trying downloadAs method');
       (editor as any).downloadAs();
       
       // 等待保存事件，使用 eventBus.waitFor
-      return await eventBus.waitFor(EVENT_KEYS.SAVE_DOCUMENT, 3000); // 3秒超时
+      const result = await eventBus.waitFor(EVENT_KEYS.SAVE_DOCUMENT, 3000); // 3秒超时
+      
+      // 触发 loading 结束事件
+      eventBus.emit(EVENT_KEYS.LOADING_CHANGE, { loading: false });
+      
+      return result;
     } catch (error) {
+      // 发生错误时也要关闭 loading
+      eventBus.emit(EVENT_KEYS.LOADING_CHANGE, { loading: false });
       console.error('Failed to send asc_save command:', error);
       throw error;
     }

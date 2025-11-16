@@ -6,6 +6,10 @@ export type DocumentReadyData = {
   fileType: string;
 };
 
+export type LoadingChangeData = {
+  loading: boolean;
+};
+
 // 事件类型定义
 export type EventKey = typeof EVENT_KEYS[keyof typeof EVENT_KEYS];
 
@@ -13,6 +17,7 @@ export type EventKey = typeof EVENT_KEYS[keyof typeof EVENT_KEYS];
 type EventDataMap = {
   [EVENT_KEYS.SAVE_DOCUMENT]: any;
   [EVENT_KEYS.DOCUMENT_READY]: DocumentReadyData;
+  [EVENT_KEYS.LOADING_CHANGE]: LoadingChangeData;
 };
 
 // 通用 EventBus 类
