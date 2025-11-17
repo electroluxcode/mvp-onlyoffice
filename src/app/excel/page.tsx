@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, Suspense } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { convertBinToDocument, createEditorView } from '@/onlyoffice-comp/lib/x2t';
 
@@ -11,7 +11,7 @@ import { ONLYOFFICE_EVENT_KEYS, FILE_TYPE, ONLYOFFICE_ID } from '@/onlyoffice-co
 import Loading from '@/components/Loading';
 import { onlyofficeEventbus } from '@/onlyoffice-comp/lib/eventbus';
 
-export default function ExcelPage() {
+function ExcelPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -234,5 +234,13 @@ export default function ExcelPage() {
         }}
       />
     </div>
+  );
+}
+
+export default function ExcelPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-screen">加载中...</div>}>
+      <ExcelPageContent />
+    </Suspense>
   );
 }
