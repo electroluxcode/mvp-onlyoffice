@@ -6,8 +6,8 @@ interface DocEditor {
   }) => void;
   destroyEditor: () => void;
 }
-import { ONLUOFFICE_RESOURCE, ONLYOFFICE_ID, EVENT_KEYS, READONLY_SWITCH_MIN_DELAY } from './const';
-import { eventBus } from './eventbus';
+import { ONLYOFFICE_RESOURCE, ONLYOFFICE_ID, ONLYOFFICE_EVENT_KEYS, READONLY_TIMEOUT_CONFIG, ONLYOFFICE_CONTAINER_CONFIG } from './const';
+import { onlyofficeEventbus } from './eventbus';
 import { createEditorInstance } from './x2t';
 // DocsAPI 类型定义
 declare global {
@@ -36,18 +36,19 @@ class EditorManager {
   } | null = null;
   private readOnly = false;
   
-  // 编辑器容器配置
-  private containerId = ONLYOFFICE_ID;
-  private containerParentSelector = '.flex-1.relative';
-  
   // 获取容器 ID
   getContainerId(): string {
-    return this.containerId;
+    return ONLYOFFICE_CONTAINER_CONFIG.ID;
   }
   
   // 获取容器父元素选择器
   getContainerParentSelector(): string {
-    return this.containerParentSelector;
+    return ONLYOFFICE_CONTAINER_CONFIG.PARENT_SELECTOR;
+  }
+  
+  // 获取容器样式配置
+  getContainerStyle(): Record<string, string> {
+    return ONLYOFFICE_CONTAINER_CONFIG.STYLE;
   }
 
   // 使用 Proxy 提供安全的访问接口
@@ -98,7 +99,7 @@ class EditorManager {
     }
     
     // 确保容器元素存在（OnlyOffice 可能会删除它）
-    const container = document.getElementById(ONLYOFFICE_ID);
+    const container = document.getElementById(ONLYOFFICE_CONTAINER_CONFIG.ID);
     if (!container) {
       console.warn('Container element not found, OnlyOffice may have removed it');
     }
@@ -132,18 +133,18 @@ class EditorManager {
 
   // 加载 OnlyOffice API 脚本
   async loadAPI(): Promise<void> {
-    if (this.apiLoaded && window.DocsAPI) {
-      return;
-    }
+    // if (this.apiLoaded && window.DocsAPI) {
+    //   return;
+    // }
 
-    if (this.apiLoadingPromise) {
-      return this.apiLoadingPromise;
-    }
+    // if (this.apiLoadingPromise) {
+    //   return this.apiLoadingPromise;
+    // }
 
     this.apiLoadingPromise = new Promise((resolve, reject) => {
       const script = document.createElement('script');
       script.id = 'onlyoffice-script-api';
-      script.src = ONLUOFFICE_RESOURCE.DOCUMENTS;
+      script.src = ONLYOFFICE_RESOURCE.DOCUMENTS;
       script.onload = () => {
         this.apiLoaded = true;
         this.apiLoadingPromise = null;
@@ -165,8 +166,8 @@ class EditorManager {
   // 当从只读切换到可编辑时，先导出数据，然后重新加载编辑器实例
   async setReadOnly(readOnly: boolean): Promise<void> {
     
-    eventBus.emit(EVENT_KEYS.LOADING_CHANGE, { loading: true });
-    await new Promise(resolve => setTimeout(resolve, READONLY_SWITCH_MIN_DELAY));
+    onlyofficeEventbus.emit(ONLYOFFICE_EVENT_KEYS.LOADING_CHANGE, { loading: true });
+    await new Promise(resolve => setTimeout(resolve, READONLY_TIMEOUT_CONFIG.READONLY_SWITCH_MIN_DELAY));
     // 可编辑，先导出数据，然后重新加载编辑器
     if (this.readOnly && !readOnly) {
       console.log('Switching from read-only to edit mode, exporting and reloading editor...');
@@ -197,8 +198,8 @@ class EditorManager {
         media: this.editorConfig?.media,
         readOnly: false, // 明确设置为可编辑模式
       });
-      eventBus.on(EVENT_KEYS.DOCUMENT_READY, () => {
-        eventBus.emit(EVENT_KEYS.LOADING_CHANGE, { loading: false });
+      onlyofficeEventbus.on(ONLYOFFICE_EVENT_KEYS.DOCUMENT_READY, () => {
+        onlyofficeEventbus.emit(ONLYOFFICE_EVENT_KEYS.LOADING_CHANGE, { loading: false });
       });
       this.readOnly = false;
       return;
@@ -228,11 +229,11 @@ class EditorManager {
           message: message
         },
       });
-      eventBus.emit(EVENT_KEYS.LOADING_CHANGE, { loading: false });
+      onlyofficeEventbus.emit(ONLYOFFICE_EVENT_KEYS.LOADING_CHANGE, { loading: false });
       this.readOnly = true;
     } catch (error) {
       console.error('Failed to set read-only mode:', error);
-      eventBus.emit(EVENT_KEYS.LOADING_CHANGE, { loading: false });
+      onlyofficeEventbus.emit(ONLYOFFICE_EVENT_KEYS.LOADING_CHANGE, { loading: false });
       throw error;
     }
   }
@@ -275,8 +276,8 @@ class EditorManager {
       console.log('Trying downloadAs method');
       (editor as any).downloadAs();
       
-      // 等待保存事件，使用 eventBus.waitFor
-      const result = await eventBus.waitFor(EVENT_KEYS.SAVE_DOCUMENT, 3000); // 3秒超时
+      // 等待保存事件，使用 onlyofficeEventbus.waitFor
+      const result = await onlyofficeEventbus.waitFor(ONLYOFFICE_EVENT_KEYS.SAVE_DOCUMENT, READONLY_TIMEOUT_CONFIG.SAVE_DOCUMENT);
       
       // 触发 loading 结束事件
       

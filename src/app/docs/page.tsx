@@ -5,9 +5,9 @@ import { convertBinToDocument, createEditorView } from '@/onlyoffice-comp/lib/x2
 import { initializeOnlyOffice } from '@/onlyoffice-comp/lib/utils';
 import { setDocmentObj, getDocmentObj } from '@/onlyoffice-comp/lib/document-state';
 import { editorManager } from '@/onlyoffice-comp/lib/editor-manager';
-import { EVENT_KEYS, FILE_TYPE, ONLYOFFICE_ID } from '@/onlyoffice-comp/lib/const';
+import { ONLYOFFICE_EVENT_KEYS, FILE_TYPE, ONLYOFFICE_ID } from '@/onlyoffice-comp/lib/const';
 import Loading from '@/components/Loading';
-import { eventBus } from '@/onlyoffice-comp/lib/eventbus';
+import { onlyofficeEventbus } from '@/onlyoffice-comp/lib/eventbus';
 
 export default function DocsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -58,7 +58,7 @@ export default function DocsPage() {
 
     init();
 
-    eventBus.on(EVENT_KEYS.DOCUMENT_READY, (data) => {
+    onlyofficeEventbus.on(ONLYOFFICE_EVENT_KEYS.DOCUMENT_READY, (data) => {
       forceUpdate((prev) => prev + 1);
     });
 
@@ -66,10 +66,10 @@ export default function DocsPage() {
     const handleLoadingChange = (data: { loading: boolean }) => {
       setLoading(data.loading);
     };
-    eventBus.on(EVENT_KEYS.LOADING_CHANGE, handleLoadingChange);
+    onlyofficeEventbus.on(ONLYOFFICE_EVENT_KEYS.LOADING_CHANGE, handleLoadingChange);
 
     return () => {
-      eventBus.off(EVENT_KEYS.LOADING_CHANGE, handleLoadingChange);
+      onlyofficeEventbus.off(ONLYOFFICE_EVENT_KEYS.LOADING_CHANGE, handleLoadingChange);
       editorManager.destroy();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

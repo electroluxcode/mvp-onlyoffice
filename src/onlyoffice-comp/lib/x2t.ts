@@ -2,8 +2,8 @@ import { getExtensions, loadEditorApi } from './utils';
 import { g_sEmpty_bin } from './empty_bin';
 import { getDocmentObj } from './document-state';
 import { editorManager } from './editor-manager';
-import { ONLUOFFICE_RESOURCE, ONLYOFFICE_ID, EVENT_KEYS } from './const';
-import { eventBus } from './eventbus';
+import { ONLYOFFICE_RESOURCE, ONLYOFFICE_ID, ONLYOFFICE_EVENT_KEYS, ONLYOFFICE_CONTAINER_CONFIG, READONLY_TIMEOUT_CONFIG } from './const';
+import { onlyofficeEventbus } from './eventbus';
 
 declare global {
   interface Window {
@@ -66,8 +66,7 @@ class X2TConverter {
   };
 
   private readonly WORKING_DIRS = ['/working', '/working/media', '/working/fonts', '/working/themes'];
-  private readonly SCRIPT_PATH = ONLUOFFICE_RESOURCE.X2T;
-  private readonly INIT_TIMEOUT = 300000;
+  private readonly SCRIPT_PATH = ONLYOFFICE_RESOURCE.X2T;
 
   /**
    * 加载 X2T 脚本文件
@@ -125,9 +124,9 @@ class X2TConverter {
         // 设置超时处理
         const timeoutId = setTimeout(() => {
           if (!this.isReady) {
-            reject(new Error(`X2T initialization timeout after ${this.INIT_TIMEOUT}ms`));
+            reject(new Error(`X2T initialization timeout after ${READONLY_TIMEOUT_CONFIG.X2T_INIT}ms`));
           }
-        }, this.INIT_TIMEOUT);
+        }, READONLY_TIMEOUT_CONFIG.X2T_INIT);
 
         x2t.onRuntimeInitialized = () => {
           try {
@@ -693,7 +692,7 @@ async function onSaveInEditor(event: SaveEvent): Promise<any> {
     };
 
     // 通过 eventbus 通知
-    eventBus.emit(EVENT_KEYS.SAVE_DOCUMENT, result);
+    onlyofficeEventbus.emit(ONLYOFFICE_EVENT_KEYS.SAVE_DOCUMENT, result);
 
     return result;
   }
@@ -730,21 +729,17 @@ export function createEditorInstance(config: {
   }
 
   // 确保容器元素存在（OnlyOffice 的 destroyEditor 可能会删除它）
-  // 使用 editorManager 的配置来获取容器信息
-  const containerId = editorManager.getContainerId();
+  // 使用 ONLYOFFICE_CONTAINER_CONFIG 配置来获取容器信息
+  const containerId = ONLYOFFICE_CONTAINER_CONFIG.ID;
   let container = document.getElementById(containerId);
   if (!container) {
     // 如果容器不存在，创建一个新的
     container = document.createElement('div');
     container.id = containerId;
-    container.style.position = 'absolute';
-    container.style.top = '0';
-    container.style.right = '0';
-    container.style.bottom = '0';
-    container.style.left = '0';
-    // 尝试找到父容器（使用 editorManager 的配置）
-    const parentSelector = editorManager.getContainerParentSelector();
-    const parent = document.querySelector(parentSelector) || document.body;
+    // 应用容器样式配置
+    Object.assign(container.style, ONLYOFFICE_CONTAINER_CONFIG.STYLE);
+    // 尝试找到父容器
+    const parent = document.querySelector(ONLYOFFICE_CONTAINER_CONFIG.PARENT_SELECTOR) || document.body;
     parent.appendChild(container);
     console.warn('Container element was missing, created a new one');
   }
@@ -808,7 +803,7 @@ export function createEditorInstance(config: {
       onDocumentReady: () => {
         console.log('文档加载完成：', fileName);
         // 触发 documentReady 事件
-        eventBus.emit(EVENT_KEYS.DOCUMENT_READY, {
+        onlyofficeEventbus.emit(ONLYOFFICE_EVENT_KEYS.DOCUMENT_READY, {
           fileName,
           fileType,
         });
@@ -874,7 +869,7 @@ export async function createEditorView(options: {
       media: documentData.media,
     });
     let hasUsed = false
-    eventBus.on(EVENT_KEYS.DOCUMENT_READY, () => {
+    onlyofficeEventbus.on(ONLYOFFICE_EVENT_KEYS.DOCUMENT_READY, () => {
       if(readOnly && !hasUsed){
         editor.setReadOnly(readOnly);
         hasUsed = true;

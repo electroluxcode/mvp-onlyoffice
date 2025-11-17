@@ -56,12 +56,13 @@ export async function initializeOnlyOffice(): Promise<void> {
     try {
       // 并行加载脚本和 API（它们之间没有依赖关系）
       await Promise.all([
-        loadScript(),
+        // loadscript 好像没用
+        // loadScript(),
         loadEditorApi(),
       ]);
       
       // X2T 初始化需要等待脚本加载完成
-      await initX2T();
+      // await initX2T();
       
       isInitialized = true;
       console.log('OnlyOffice environment initialized successfully');

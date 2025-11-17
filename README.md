@@ -28,8 +28,8 @@ public/web-apps/apps/spreadsheeteditor/main/app.js
 
 ### 工作原理
 
-1. **保存事件触发**：当用户保存文档时，`onSaveInEditor` 处理数据并通过 `eventBus.emit('saveDocument', data)` 发送
-2. **监听保存**：`editorManager.export()` 通过 `eventBus.waitFor('saveDocument')` 等待事件
+1. **保存事件触发**：当用户保存文档时，`onSaveInEditor` 处理数据并通过 `onlyofficeEventbus.emit('saveDocument', data)` 发送
+2. **监听保存**：`editorManager.export()` 通过 `onlyofficeEventbus.waitFor('saveDocument')` 等待事件
 3. **返回数据**：事件触发后，Promise resolve，返回文档数据
 
 ### 使用示例
@@ -68,17 +68,17 @@ type DocumentReadyData = {
 
 ```typescript
 // 监听事件
-eventBus.on('saveDocument', (data) => { ... });
-eventBus.on('documentReady', (data) => { ... });
+onlyofficeEventbus.on('saveDocument', (data) => { ... });
+onlyofficeEventbus.on('documentReady', (data) => { ... });
 
 // 取消监听
-eventBus.off('saveDocument', callback);
+onlyofficeEventbus.off('saveDocument', callback);
 
 // 触发事件
-eventBus.emit('saveDocument', data);
-eventBus.emit('documentReady', data);
+onlyofficeEventbus.emit('saveDocument', data);
+onlyofficeEventbus.emit('documentReady', data);
 
 // 等待事件（返回 Promise）
-const data = await eventBus.waitFor('saveDocument', 3000); // 3秒超时
-const readyData = await eventBus.waitFor('documentReady', 30000); // 30秒超时
+const data = await onlyofficeEventbus.waitFor('saveDocument', 3000); // 3秒超时
+const readyData = await onlyofficeEventbus.waitFor('documentReady', 30000); // 30秒超时
 ```

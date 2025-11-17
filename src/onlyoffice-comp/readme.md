@@ -186,33 +186,33 @@ OnlyOffice Comp 使用 EventBus 机制进行事件通信。
 ### 事件类型
 
 ```typescript
-import { EVENT_KEYS } from '@/onlyoffice-comp/lib/const';
+import { ONLYOFFICE_EVENT_KEYS } from '@/onlyoffice-comp/lib/const';
 
-EVENT_KEYS.SAVE_DOCUMENT   // 'saveDocument' - 文档保存事件
-EVENT_KEYS.DOCUMENT_READY  // 'documentReady' - 文档准备就绪事件
-EVENT_KEYS.LOADING_CHANGE  // 'loadingChange' - Loading 状态变化事件
+ONLYOFFICE_EVENT_KEYS.SAVE_DOCUMENT   // 'saveDocument' - 文档保存事件
+ONLYOFFICE_EVENT_KEYS.DOCUMENT_READY  // 'documentReady' - 文档准备就绪事件
+ONLYOFFICE_EVENT_KEYS.LOADING_CHANGE  // 'loadingChange' - Loading 状态变化事件
 ```
 
 ### 监听事件
 
 ```typescript
-import { eventBus } from '@/onlyoffice-comp/lib/eventbus';
-import { EVENT_KEYS } from '@/onlyoffice-comp/lib/const';
+import { onlyofficeEventbus } from '@/onlyoffice-comp/lib/eventbus';
+import { ONLYOFFICE_EVENT_KEYS } from '@/onlyoffice-comp/lib/const';
 
 // 监听文档准备就绪事件
-eventBus.on(EVENT_KEYS.DOCUMENT_READY, (data) => {
+onlyofficeEventbus.on(ONLYOFFICE_EVENT_KEYS.DOCUMENT_READY, (data) => {
   console.log('文档已准备就绪:', data.fileName);
   // data: { fileName: string, fileType: string }
 });
 
 // 监听文档保存事件
-eventBus.on(EVENT_KEYS.SAVE_DOCUMENT, (data) => {
+onlyofficeEventbus.on(ONLYOFFICE_EVENT_KEYS.SAVE_DOCUMENT, (data) => {
   console.log('文档已保存:', data.fileName);
   // data: { fileName: string, fileType: string, binData: Uint8Array }
 });
 
 // 监听 Loading 状态变化事件（用于导出等操作）
-eventBus.on(EVENT_KEYS.LOADING_CHANGE, (data) => {
+onlyofficeEventbus.on(ONLYOFFICE_EVENT_KEYS.LOADING_CHANGE, (data) => {
   setLoading(data.loading);
   // data: { loading: boolean }
 });
@@ -224,10 +224,10 @@ eventBus.on(EVENT_KEYS.LOADING_CHANGE, (data) => {
 
 ```typescript
 // 等待文档准备就绪（30秒超时）
-const readyData = await eventBus.waitFor(EVENT_KEYS.DOCUMENT_READY, 30000);
+const readyData = await onlyofficeEventbus.waitFor(ONLYOFFICE_EVENT_KEYS.DOCUMENT_READY, 30000);
 
 // 等待文档保存（3秒超时）
-const saveData = await eventBus.waitFor(EVENT_KEYS.SAVE_DOCUMENT, 3000);
+const saveData = await onlyofficeEventbus.waitFor(ONLYOFFICE_EVENT_KEYS.SAVE_DOCUMENT, 3000);
 ```
 
 ### Loading 状态管理
@@ -236,8 +236,8 @@ const saveData = await eventBus.waitFor(EVENT_KEYS.SAVE_DOCUMENT, 3000);
 
 ```typescript
 import { useEffect, useState } from 'react';
-import { eventBus } from '@/onlyoffice-comp/lib/eventbus';
-import { EVENT_KEYS } from '@/onlyoffice-comp/lib/const';
+import { onlyofficeEventbus } from '@/onlyoffice-comp/lib/eventbus';
+import { ONLYOFFICE_EVENT_KEYS } from '@/onlyoffice-comp/lib/const';
 
 function EditorPage() {
   const [loading, setLoading] = useState(false);
@@ -248,11 +248,11 @@ function EditorPage() {
       setLoading(data.loading);
     };
     
-    eventBus.on(EVENT_KEYS.LOADING_CHANGE, handleLoadingChange);
+    onlyofficeEventbus.on(ONLYOFFICE_EVENT_KEYS.LOADING_CHANGE, handleLoadingChange);
 
     return () => {
       // 清理监听器
-      eventBus.off(EVENT_KEYS.LOADING_CHANGE, handleLoadingChange);
+      onlyofficeEventbus.off(ONLYOFFICE_EVENT_KEYS.LOADING_CHANGE, handleLoadingChange);
     };
   }, []);
 
@@ -274,9 +274,9 @@ const handler = (data) => {
   console.log('事件触发:', data);
 };
 
-eventBus.on(EVENT_KEYS.DOCUMENT_READY, handler);
+onlyofficeEventbus.on(ONLYOFFICE_EVENT_KEYS.DOCUMENT_READY, handler);
 // ...
-eventBus.off(EVENT_KEYS.DOCUMENT_READY, handler);
+onlyofficeEventbus.off(ONLYOFFICE_EVENT_KEYS.DOCUMENT_READY, handler);
 ```
 
 ## 完整示例
@@ -291,8 +291,8 @@ import { convertBinToDocument, createEditorView } from '@/onlyoffice-comp/lib/x2
 import { initializeOnlyOffice } from '@/onlyoffice-comp/lib/utils';
 import { setDocmentObj, getDocmentObj } from '@/onlyoffice-comp/lib/document-state';
 import { editorManager } from '@/onlyoffice-comp/lib/editor-manager';
-import { EVENT_KEYS, FILE_TYPE, ONLYOFFICE_ID } from '@/onlyoffice-comp/lib/const';
-import { eventBus } from '@/onlyoffice-comp/lib/eventbus';
+import { ONLYOFFICE_EVENT_KEYS, FILE_TYPE, ONLYOFFICE_ID } from '@/onlyoffice-comp/lib/const';
+import { onlyofficeEventbus } from '@/onlyoffice-comp/lib/eventbus';
 
 export default function EditorPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -358,7 +358,7 @@ export default function EditorPage() {
     init();
 
     // 监听文档准备就绪事件
-    eventBus.on(EVENT_KEYS.DOCUMENT_READY, (data) => {
+    onlyofficeEventbus.on(ONLYOFFICE_EVENT_KEYS.DOCUMENT_READY, (data) => {
       console.log('文档已准备就绪:', data);
     });
 
@@ -366,10 +366,10 @@ export default function EditorPage() {
     const handleLoadingChange = (data: { loading: boolean }) => {
       setLoading(data.loading);
     };
-    eventBus.on(EVENT_KEYS.LOADING_CHANGE, handleLoadingChange);
+    onlyofficeEventbus.on(ONLYOFFICE_EVENT_KEYS.LOADING_CHANGE, handleLoadingChange);
 
     return () => {
-      eventBus.off(EVENT_KEYS.LOADING_CHANGE, handleLoadingChange);
+      onlyofficeEventbus.off(ONLYOFFICE_EVENT_KEYS.LOADING_CHANGE, handleLoadingChange);
       editorManager.destroy();
     };
   }, []);
@@ -454,11 +454,11 @@ export default function EditorPage() {
 #### `ONLYOFFICE_ID`
 编辑器容器的 DOM ID，默认为 `'iframe2'`
 
-#### `EVENT_KEYS`
+#### `ONLYOFFICE_EVENT_KEYS`
 事件名称常量：
-- `EVENT_KEYS.SAVE_DOCUMENT` - 文档保存事件
-- `EVENT_KEYS.DOCUMENT_READY` - 文档准备就绪事件
-- `EVENT_KEYS.LOADING_CHANGE` - Loading 状态变化事件
+- `ONLYOFFICE_EVENT_KEYS.SAVE_DOCUMENT` - 文档保存事件
+- `ONLYOFFICE_EVENT_KEYS.DOCUMENT_READY` - 文档准备就绪事件
+- `ONLYOFFICE_EVENT_KEYS.LOADING_CHANGE` - Loading 状态变化事件
 
 #### `FILE_TYPE`
 文件类型常量：

@@ -1,5 +1,5 @@
 
-import { EVENT_KEYS } from './const';
+import { ONLYOFFICE_EVENT_KEYS } from './const';
 
 export type DocumentReadyData = {
   fileName: string;
@@ -11,13 +11,13 @@ export type LoadingChangeData = {
 };
 
 // 事件类型定义
-export type EventKey = typeof EVENT_KEYS[keyof typeof EVENT_KEYS];
+export type EventKey = typeof ONLYOFFICE_EVENT_KEYS[keyof typeof ONLYOFFICE_EVENT_KEYS];
 
 // 事件数据类型映射
 type EventDataMap = {
-  [EVENT_KEYS.SAVE_DOCUMENT]: any;
-  [EVENT_KEYS.DOCUMENT_READY]: DocumentReadyData;
-  [EVENT_KEYS.LOADING_CHANGE]: LoadingChangeData;
+  [ONLYOFFICE_EVENT_KEYS.SAVE_DOCUMENT]: any;
+  [ONLYOFFICE_EVENT_KEYS.DOCUMENT_READY]: DocumentReadyData;
+  [ONLYOFFICE_EVENT_KEYS.LOADING_CHANGE]: LoadingChangeData;
 };
 
 // 通用 EventBus 类
@@ -81,7 +81,7 @@ class EventBus {
 }
 
 // 创建全局 EventBus 实例
-const eventBus = new EventBus();
+const onlyofficeEventbus = new EventBus();
 
-export { eventBus };
+export { onlyofficeEventbus };
 
