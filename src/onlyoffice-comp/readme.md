@@ -424,7 +424,9 @@ export default function EditorPage() {
       )}
 
       {/* 编辑器容器 */}
-      <div className="flex-1 relative">
+      <div className={
+        `${ONLYOFFICE_CONTAINER_CONFIG.PARENT_ID} flex-1 relative`
+      }>
         <div id={ONLYOFFICE_ID} className="absolute inset-0" />
       </div>
 

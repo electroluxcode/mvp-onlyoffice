@@ -99,9 +99,26 @@ class EditorManager {
     }
     
     // 确保容器元素存在（OnlyOffice 可能会删除它）
-    const container = document.getElementById(ONLYOFFICE_CONTAINER_CONFIG.ID);
+    const containerId = ONLYOFFICE_CONTAINER_CONFIG.ID;
+    let container = document.getElementById(containerId);
+    
+    // 如果容器不存在，尝试重新创建它
     if (!container) {
-      console.warn('Container element not found, OnlyOffice may have removed it');
+      const parent = document.querySelector(ONLYOFFICE_CONTAINER_CONFIG.PARENT_SELECTOR);
+      if (parent) {
+        container = document.createElement('div');
+        container.id = containerId;
+        Object.assign(container.style, ONLYOFFICE_CONTAINER_CONFIG.STYLE);
+        parent.appendChild(container);
+        console.log('Container element recreated in editor-manager');
+      } else {
+        // 降级方案：直接使用 body
+        container = document.createElement('div');
+        container.id = containerId;
+        Object.assign(container.style, ONLYOFFICE_CONTAINER_CONFIG.STYLE);
+        document.body.appendChild(container);
+        console.warn('Container element recreated in body as fallback in editor-manager');
+      }
     }
     
     this.editor = editor;

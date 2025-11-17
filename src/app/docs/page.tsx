@@ -6,7 +6,7 @@ import { convertBinToDocument, createEditorView } from '@/onlyoffice-comp/lib/x2
 import { initializeOnlyOffice } from '@/onlyoffice-comp/lib/utils';
 import { setDocmentObj, getDocmentObj, getOnlyOfficeLang, getCurrentLang, setCurrentLang } from '@/onlyoffice-comp/lib/document-state';
 import { editorManager } from '@/onlyoffice-comp/lib/editor-manager';
-import { ONLYOFFICE_EVENT_KEYS, FILE_TYPE, ONLYOFFICE_ID, ONLYOFFICE_LANG_KEY } from '@/onlyoffice-comp/lib/const';
+import { ONLYOFFICE_EVENT_KEYS, FILE_TYPE, ONLYOFFICE_ID, ONLYOFFICE_LANG_KEY, ONLYOFFICE_CONTAINER_CONFIG } from '@/onlyoffice-comp/lib/const';
 import Loading from '@/components/Loading';
 import { onlyofficeEventbus } from '@/onlyoffice-comp/lib/eventbus';
 
@@ -208,7 +208,7 @@ function DocsPageContent() {
       )}
 
       {/* 编辑器容器 */}
-      <div className="flex-1 relative">
+      <div className={`${ONLYOFFICE_CONTAINER_CONFIG.PARENT_CLASS_NAME} flex-1 relative`}>
         <div id={ONLYOFFICE_ID} className="absolute inset-0" />
       </div>
 

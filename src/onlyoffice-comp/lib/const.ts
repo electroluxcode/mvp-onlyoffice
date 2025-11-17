@@ -1,11 +1,13 @@
-export const ONLYOFFICE_ID = 'iframe2';
+export const ONLYOFFICE_ID = 'iframe-office-id';
 
 // 编辑器容器挂载配置
 export const ONLYOFFICE_CONTAINER_CONFIG = {
     // 容器元素 ID
     ID: ONLYOFFICE_ID,
     // 容器父元素选择器（用于自动挂载）
-    PARENT_SELECTOR: '.flex-1.relative',
+    PARENT_SELECTOR: '.onlyoffice-container',
+    // 容器父元素类名（用于 JSX className）
+    PARENT_CLASS_NAME: 'onlyoffice-container',
     // 容器样式配置
     STYLE: {
         position: 'absolute',
@@ -13,6 +15,7 @@ export const ONLYOFFICE_CONTAINER_CONFIG = {
         right: '0',
         bottom: '0',
         left: '0',
+        zIndex: '-999',
     },
 } as const;
 

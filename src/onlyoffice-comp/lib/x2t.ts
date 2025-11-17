@@ -729,20 +729,27 @@ export function createEditorInstance(config: {
     throw new Error('OnlyOffice API 未加载，请先调用 loadEditorApi()');
   }
 
-  // 确保容器元素存在（OnlyOffice 的 destroyEditor 可能会删除它）
-  // 使用 ONLYOFFICE_CONTAINER_CONFIG 配置来获取容器信息
+  // 确保容器元素存在
   const containerId = ONLYOFFICE_CONTAINER_CONFIG.ID;
   let container = document.getElementById(containerId);
+  
+  // 如果容器不存在，尝试创建它
   if (!container) {
-    // 如果容器不存在，创建一个新的
-    container = document.createElement('div');
-    container.id = containerId;
-    // 应用容器样式配置
-    Object.assign(container.style, ONLYOFFICE_CONTAINER_CONFIG.STYLE);
-    // 尝试找到父容器
-    const parent = document.querySelector(ONLYOFFICE_CONTAINER_CONFIG.PARENT_SELECTOR) || document.body;
-    parent.appendChild(container);
-    console.warn('Container element was missing, created a new one');
+    const parent = document.querySelector(ONLYOFFICE_CONTAINER_CONFIG.PARENT_SELECTOR);
+    if (parent) {
+      container = document.createElement('div');
+      container.id = containerId;
+      Object.assign(container.style, ONLYOFFICE_CONTAINER_CONFIG.STYLE);
+      parent.appendChild(container);
+      console.log('Container element created');
+    } else {
+      // 降级方案：直接使用 body
+      container = document.createElement('div');
+      container.id = containerId;
+      Object.assign(container.style, ONLYOFFICE_CONTAINER_CONFIG.STYLE);
+      document.body.appendChild(container);
+      console.warn('Container element created in body as fallback');
+    }
   }
 
   // 创建编辑器实例
