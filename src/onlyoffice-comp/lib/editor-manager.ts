@@ -7,6 +7,7 @@ interface DocEditor {
   destroyEditor: () => void;
 }
 import { ONLYOFFICE_RESOURCE, ONLYOFFICE_ID, ONLYOFFICE_EVENT_KEYS, READONLY_TIMEOUT_CONFIG, ONLYOFFICE_CONTAINER_CONFIG } from './const';
+import { getOnlyOfficeLang } from './document-state';
 import { onlyofficeEventbus } from './eventbus';
 import { createEditorInstance } from './x2t';
 // DocsAPI 类型定义
@@ -213,6 +214,7 @@ class EditorManager {
         fileType: exportedData.fileType,
         binData: exportedData.binData,
         media: this.editorConfig?.media,
+        lang: getOnlyOfficeLang(),
         readOnly: false, // 明确设置为可编辑模式
       });
       onlyofficeEventbus.on(ONLYOFFICE_EVENT_KEYS.DOCUMENT_READY, () => {

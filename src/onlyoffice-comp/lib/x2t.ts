@@ -416,6 +416,73 @@ class X2TConverter {
   }
 
   /**
+   * 加载 xlsx 库（SheetJS）
+   */
+  private async loadXlsxLibrary(): Promise<any> {
+    // 检查是否已经加载
+    if (typeof window !== 'undefined' && (window as any).XLSX) {
+      return (window as any).XLSX;
+    }
+
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = '/libs/sheetjs/xlsx.full.min.js';
+      script.onload = () => {
+        if (typeof window !== 'undefined' && (window as any).XLSX) {
+          resolve((window as any).XLSX);
+        } else {
+          reject(new Error('Failed to load xlsx library'));
+        }
+      };
+      script.onerror = () => {
+        reject(new Error('Failed to load xlsx library from local file'));
+      };
+      document.head.appendChild(script);
+    });
+  }
+
+  /**
+   * 使用 SheetJS 库将 CSV 转换为 XLSX 格式
+   * 这是解决 x2t 可能不支持直接转换 CSV 的变通方法
+   */
+  private async convertCsvToXlsx(csvData: Uint8Array, fileName: string): Promise<File> {
+    try {
+      // 加载 xlsx 库
+      const XLSX = await this.loadXlsxLibrary();
+
+      // 移除 UTF-8 BOM（如果存在）
+      let csvText: string;
+      if (csvData.length >= 3 && csvData[0] === 0xef && csvData[1] === 0xbb && csvData[2] === 0xbf) {
+        csvText = new TextDecoder('utf-8').decode(csvData.slice(3));
+      } else {
+        // 先尝试 UTF-8，如果失败则回退到其他编码
+        try {
+          csvText = new TextDecoder('utf-8').decode(csvData);
+        } catch {
+          csvText = new TextDecoder('latin1').decode(csvData);
+        }
+      }
+
+      // 使用 SheetJS 解析 CSV
+      const workbook = XLSX.read(csvText, { type: 'string', raw: false });
+
+      // 转换为 XLSX 二进制格式
+      const xlsxBuffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
+
+      // 创建 File 对象
+      const xlsxFileName = fileName.replace(/\.csv$/i, '.xlsx');
+      return new File([xlsxBuffer], xlsxFileName, {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to convert CSV to XLSX: ${error instanceof Error ? error.message : 'Unknown error'}. ` +
+          'Please convert your CSV file to XLSX format manually and try again.',
+      );
+    }
+  }
+
+  /**
    * 将文档转换为 bin 格式
    */
   async convertDocument(file: File): Promise<ConversionResult> {
@@ -430,7 +497,59 @@ class X2TConverter {
       const arrayBuffer = await file.arrayBuffer();
       const data = new Uint8Array(arrayBuffer);
 
-      // 生成安全的文件名
+      // 处理 CSV 文件 - x2t 可能不支持直接转换 CSV，所以先转换为 XLSX
+      if (fileExt.toLowerCase() === 'csv') {
+        if (data.length === 0) {
+          throw new Error('CSV file is empty');
+        }
+        console.log('CSV file detected. Converting to XLSX format...');
+        console.log('CSV file size:', data.length, 'bytes');
+
+        // 先将 CSV 转换为 XLSX
+        try {
+          const xlsxFile = await this.convertCsvToXlsx(data, fileName);
+          console.log('CSV converted to XLSX, now converting with x2t...');
+
+          // 现在使用 x2t 转换 XLSX 文件
+          const xlsxArrayBuffer = await xlsxFile.arrayBuffer();
+          const xlsxData = new Uint8Array(xlsxArrayBuffer);
+
+          // 使用 XLSX 文件进行转换
+          const sanitizedName = this.sanitizeFileName(xlsxFile.name);
+          const inputPath = `/working/${sanitizedName}`;
+          const outputPath = `${inputPath}.bin`;
+
+          // 将 XLSX 文件写入虚拟文件系统
+          this.x2tModule!.FS.writeFile(inputPath, xlsxData);
+
+          // 创建转换参数 - XLSX 不需要特殊参数
+          const params = this.createConversionParams(inputPath, outputPath, '');
+          this.x2tModule!.FS.writeFile('/working/params.xml', params);
+
+          // 执行转换
+          this.executeConversion('/working/params.xml');
+
+          // 读取转换结果
+          const result = this.x2tModule!.FS.readFile(outputPath);
+          const media = this.readMediaFiles();
+
+          // 返回原始 CSV 文件名，而不是 XLSX 文件名
+          return {
+            fileName: this.sanitizeFileName(fileName), // 保持原始 CSV 文件名
+            type: documentType,
+            bin: result,
+            media,
+          };
+        } catch (conversionError: any) {
+          // 如果转换失败，提供有用的错误信息
+          throw new Error(
+            `Failed to convert CSV file: ${conversionError?.message || 'Unknown error'}. ` +
+              'Please ensure your CSV file is properly formatted and try again.',
+          );
+        }
+      }
+
+      // 对于所有其他文件类型，使用标准转换
       const sanitizedName = this.sanitizeFileName(fileName);
       const inputPath = `/working/${sanitizedName}`;
       const outputPath = `${inputPath}.bin`;
@@ -438,8 +557,8 @@ class X2TConverter {
       // 写入文件到虚拟文件系统
       this.x2tModule!.FS.writeFile(inputPath, data);
 
-      // 创建转换参数
-      const params = this.createConversionParams(inputPath, outputPath);
+      // 创建转换参数 - 非 CSV 文件不需要特殊参数
+      const params = this.createConversionParams(inputPath, outputPath, '');
       this.x2tModule!.FS.writeFile('/working/params.xml', params);
 
       // 执行转换
